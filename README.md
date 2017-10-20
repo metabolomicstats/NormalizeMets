@@ -1,4 +1,4 @@
-# NormalizeMets
+# NormalizeMets: Assessing, selecting and implementing statistical methods for normalizing metabolomics data
 
 Authors: Alysha M De Livera, Gavriel Olshansky <br />
 License: GPL (>=2) <br />
