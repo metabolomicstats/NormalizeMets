@@ -1,5 +1,12 @@
 # NormalizeMets
 
+Authors: Alysha M De Livera, Gavriel Olshansky <br />
+License: GPL (>=2) <br />
+Contact: <br />
+* Excel: g.olshansky@student.unimelb.edu.au
+* R    : alyshad@unimelb.edu.au
+<br />
+
 Software for Normalising and analysing metabolomics data.
 
 
