@@ -58,4 +58,4 @@ This file contains the Microsoft Excel user interface for the publicly available
 #### 2. To use the interactive excel interface, download and open the file ExNormalizeMets.xlsm
 
 
-#### 3. The vignette and the workflow are available on this website as a zip file above.
+#### 3. The vignette, examples and the workflow are available on this website as a html file in the folder NormalizeMets_vignette.zip.
