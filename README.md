@@ -58,4 +58,4 @@ This file contains the Microsoft Excel user interface for the publicly available
 #### 2. To use the interactive excel interface, download and open the file ExNormalizeMets.xlsm
 
 
-#### 3. To access the vignette and workflow, click the red 'manual' button in ExNormalizeMets 
+#### 3. The vignette and workflow are available on this website as a zip file above.
