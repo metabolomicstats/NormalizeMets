@@ -26,7 +26,7 @@ The input data format consists of three parts: (i) "featuredata" which is the me
 
 This file ExNormalizeMets.xlsm contains the Microsoft Excel user interface for the publicly available R package NormalizeMets. The installation of the R pacakge is required for the software to be used.
 
-#### 1. Steps for installing the R package
+#### Steps for installing the R package
 
   #(1) (i)  Install R from the CRAN website here https://cran.r-project.org/bin/windows/base/   
   #(ii) It is also recommended to install RStudio from here https://www.rstudio.com/products/RStudio/#Desktop
@@ -71,7 +71,7 @@ This file ExNormalizeMets.xlsm contains the Microsoft Excel user interface for t
   library(NormalizeMets)        # tests if package loads
   ```
 
-#### 2. To use the interactive excel interface, download and open the file ExNormalizeMets.xlsm
+#### To use the interactive excel interface, download and open the file ExNormalizeMets.xlsm
 
 
-#### 3. The vignette, examples and the workflow are available on this website as a html file in the folder NormalizeMets_vignette.zip.
+#### The vignette, examples and the workflow are available on this website as a html file in the folder NormalizeMets_vignette.zip.
