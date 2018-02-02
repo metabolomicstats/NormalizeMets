@@ -1,0 +1,551 @@
+---
+title: "NormalizeMets Vignette"
+author: "Alysha M De Livera, Gavriel Olshansky"
+date: "`r Sys.Date()`"
+bibliography: library.bib
+output: rmarkdown::html_vignette
+packages:
+includes:
+  after_body: Plotly_try.html
+params: 
+  library(NormalizeMets)
+vignette: >
+  %\VignetteIndexEntry{User Manual}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+## 1. Introduction
+
+The _NormalizeMets_ package is a collection of functions designed to implement, assess, and choose a suitable normalization method for a given metabolomics study. The functions in this package are also available as a graphical user interface within Microsoft Excel, a familiar program for most biological researchers.
+
+The package includes several widely used traditional and recently developed metabolomics normalization methods, which can be used to
+
+i.	remove the component of unwanted variation to obtain a ``normalized" data matrix that is suitable for downstream statistical analysis, or to
+
+ii.	accommodate the component of unwanted variation in a statistical model designed to answer the research question of interest.
+
+In addition, the package can be used for visualisation of metabolomics data using interactive graphical displays, and for obtaining statistical results for
+
+a. identifying biomarkers that are associated with an exposure, adjusting for confounding variables,
+
+b. clustering using heirarchical cluster analysis and principal component analysis,
+
+c. classification using support vector machine algorithm, and
+
+d. correlation analysis. 
+
+
+## 2. Getting Started
+
+The R software environment can be downloaded for free from the Comprehensive R Archive Network (CRAN) https://cran.r-project.org/, and is hosted by a large number of sites. A very detailed description of installation of R and alternate methods, FAQs, platform dependencies and the like can be found at https://cran.r-project.org/doc/manuals/R-admin.html. 
+
+The use of RStudio is also recommended. RStudio is an integrated development environment (IDE) that can be useful for handling R scripts and functions, as well as loading packages and data. For a guide on installation and usage of RStudio, please refer to RStudios page, https://www.rstudio.com/.
+
+Install the NormalizeMets package by using the following function:
+
+`install.packages("NormalizeMets")`
+
+To then load the package use:
+
+```{r warning=F, cache=TRUE, message=FALSE}
+library(NormalizeMets)
+```
+
+To cite the package use:
+
+```{r warning=F, cache=TRUE, message=FALSE}
+citation("NormalizeMets")
+```
+
+## 3. Reading the data
+
+### 3.1 Example datasets
+
+Four different datasets are included in this package:
+
+i. mixdata, as described by @Redestig2009. See ?mixdata in R.
+
+ii. Didata, as described by @Kirwan2014. See ?Didata in R.
+
+iii. UVdata, as described by @DeLivera2015. See ?UVdata in R.
+
+iv. alldata_eg, a subset of a cohort study dataset described by @DeLivera2015. See ?alldata_eg in R
+
+
+
+### 3.2 Data format used in the package
+
+The _NormalizeMets_ package stores three different sets of information.
+
+#### (i) _featuredata_
+
+_featuredata_ is a metabolomics data matrix taking the following format, with metabolites in columns and samples in rows. Unique sample names should be provided as row names.
+
+```{r warning=F, cache=TRUE, message=FALSE}
+data("alldata_eg")
+featuredata_eg<-alldata_eg$featuredata
+dataview(featuredata_eg)
+```
+
+
+#### (ii) _sampledata_
+
+_sampledata_ is a dataframe that contains sample specific information. This information can include sample types (i.e., Quality control or biological), run order of the samples, factors of interest and other sample-specific data relevant to the analysis of the data. Unique sample names should be provided as row names. These sample names must match with and be ordered according to the sample ordering in _featuredata_.  
+
+```{r warning=F, cache=TRUE, message=FALSE}
+sampledata_eg<-alldata_eg$sampledata
+dataview(sampledata_eg)
+```
+
+#### (iii) _metabolitedata_
+
+_metabolitedata_ contains metabolite specific information in a separate dataframe. This information can include, but not limited to, internal/external standard and other positive/negative control information. Metabolite names should be provided as row names, and must match with and be ordered according to the metabolite ordering in _featuredata_.
+
+```{r warning=F, cache=TRUE, message=FALSE}
+metabolitedata_eg<-alldata_eg$metabolitedata
+dataview(metabolitedata_eg)
+```
+
+Importing the data from Excel or text files for _featuredata_, _sampledata_, _metabolitedata_ is relatively simple and can be done using the commands `read.csv()` or 'read.table()'. The user may find it easier to combine these three datasets into a list that can be called in functions as required. For example,
+
+```{r warning=F, cache=TRUE, message=FALSE}
+alldata_eg<-list(featuredata=featuredata_eg, sampledata=sampledata_eg,         metabolitedata=metabolitedata_eg)
+dataview(alldata_eg$metabolitedata)
+```
+A class called _alldata_ (see ?`alldata-class`) is used in the package to store the information as above.
+
+## 4. NormalizeMets workflow
+
+### 4.1 Log transforming, handling missing values, and visualization 
+
+#### 4.11 Log transforming
+
+Abundances of metabolites in a data matrix usually have a right skewed distribution. Therefore, an appropriate transformation is needed to obtain a more symmetric distribution. The metabolomics literature have discussed various transformations such as log, cubic and square root as ways of handling these, most of which belong to the family of power transformations. However, the log transformation is usually adequate for statistical purposes [@DeLivera2013]. A metabolomics data matrix in the _featuredata_ format can be transformed using the following function.
+
+```{r eval=FALSE}
+LogTransform <- function(featuredata, base=exp(1), saveoutput=FALSE,
+    outputname="log.results",zerotona=FALSE)
+```
+
+The output can be saved as a _.csv_ file by setting _saveoutput_ equals _TRUE_, and giving the output a name using _outputname_. To log transform the example data the following can be used.
+
+```{r warning=F, cache=TRUE, message=FALSE}
+logdata <- LogTransform(featuredata_eg,zerotona=TRUE)
+#logdata
+#dataview(logdata$featuredata)
+```
+
+
+#### 4.12 Missing Values
+
+A frequent issue in metabolomics data sets is the occurence of missing values. It is important to reduce the number of missing values as much as possible by using an effective pre-processing procedure. For example, a secondary peak picking method can be used for LC-MS data to fill in missing peaks which are not detected and aligned. The following `MissingValues()` function can be used to replace missing values, depending on the nature of missing data.
+
+```{r eval=FALSE}
+MissingValues(featuredata, sampledata, as.dataframe(metabolitedata), feature.cutoff = 0.8,
+  sample.cutoff = 0.8, method = c("knn", "replace"), k = 10,
+  featuremax.knn = 0.8, samplemax.knn = 0.8, seed = 100,
+  saveoutput = FALSE, outputname = "missing.values.rep")
+```
+
+The user is able to,
+
+(i) Remove features with a large proportion _feature.cutoff_ of missing values, and/or
+
+(ii) Remove samples with a large proportion _sample.cutoff_ of missing values, and/or
+
+(iii) Replace missing values by using either the k-th nearest neighbour algorithm or by replacing values with a small number (half the minimum of the matrix as is commonly used).
+
+
+In the above, for example one can use,
+
+```{r warning=F, cache=TRUE, message=FALSE}
+imp <-  MissingValues(logdata$featuredata,sampledata_eg,metabolitedata_eg,
+                      feature.cutof=0.8, sample.cutoff=0.8, method="knn")
+#imp
+#dataview(imp$featuredata)
+```
+
+#### 4.13 Visualisation
+
+The log transformed data matrix can then be visualised using various plots in order to explore variation in the data, clustering tendencies, trends and outliers.
+
+
+###### 4.13a RlaPlots
+
+One way of visualising the log transformed metabolomics data is the use of _across group_ or _within group_ relative log abundance (RLA) plots [@DeLivera2012a @DeLivera2015]. In R, these can be obtained using the following function:
+
+
+```{r eval=FALSE}
+RlaPlots <- function(featuredata, groupdata, minoutlier = 0.5, type=c("ag", "wg"), saveplot=FALSE,
+                     plotname = "RLAPlot", savetype= c("png","bmp","jpeg", "tiff","pdf"),
+                     interactiveplot=TRUE, interactiveonly = TRUE,
+                     saveinteractiveplot = FALSE,
+                     interactivesavename = "interactiveRlaPlot",
+                     cols=NULL,cex.axis=0.8, las=2, ylim=c(-2, 2), oma=c(7, 4, 4, 2) + 0.1, ...)
+```
+
+The default is an interactive plot which can be saved by setting _saveinteractiveplot_ to  _TRUE_. This can also be downloaded as a png file. A non-interactive plot can be obtained by setting _interactiveplot_ to _FALSE_ and saved in 5 different formats using _saveplot = TRUE_, giving the _plotname_ and specifying the _savetype_. To avoid label overlapping, _minoutlier_ could be set so that only samples with resulting median greater than _minoutlier_ will be labeled.
+
+An example of sample-wise RLA plots:
+
+```{r fig.width = 7,fig.height=4}
+RlaPlots(imp$featuredata, sampledata_eg[,1], cex.axis = 0.6,saveinteractiveplot = TRUE)
+
+```
+
+The user can also explore metabolite-wise RLA plots as follows:
+
+```{r fig.width = 7,fig.height=4}
+RlaPlots(t(imp$featuredata), groupdata=rep("group",dim(imp$featuredata)[2]),
+         cex.axis = 0.6,saveinteractiveplot = TRUE,xlabel="Metabolites")
+```
+
+###### 4.13b PcaPlots
+
+The following function can be used to obtain multiple plots for exploration of the principal components of the _featuredata_ matrix: a bar plot indicating the variance explained by each principal component, scores and loading plots with specified axes (interactive and non-interactive), and a pairs plot of the first _n_ principal components. These plots are useful in identifying any outlying samples and getting a preliminary understanding of the structure of the data. As described in the section above, the outputs can be saved for publication purposes. 
+
+ 
+
+```{r eval=FALSE}
+PcaPlots <- function(featuredata, groupdata, saveplot=FALSE,saveinteractiveplot = FALSE, 
+                     plotname="",savetype= c("png","bmp","jpeg","tiff","pdf"),
+                     interactiveplots = TRUE, y.axis=1, x.axis=2, center=TRUE, scale=TRUE,
+                     main=NULL, varplot=FALSE, multiplot=FALSE, n=3, cols=NULL,cex_val = 0.7, ...)
+```
+
+
+An example is given below:
+
+```{r eval=FALSE}
+PcaPlots(imp$featuredata,sampledata_eg[,1],
+         scale=FALSE, center=TRUE, multiplot = TRUE, varplot = TRUE)
+```
+
+ 
+###### 4.13c HeatMap
+
+The _HeatMap_ function produces an interactive and/or a non-interactive heatmap, enabling visualization of the whole data matrix. The metabolites and/or the samples can be optionally clustered using hierarchial clustering. This function is demonstrated in section _4.32b_.
+
+## 4.2 Normalisation
+
+Normalization methods presented in this package are divided into four categories, as those which use (i) internal, external standards and other quality control metabolites ( _NormQcmets_) [@Sysi-Aho2007, @Redestig2009, @DeLivera2012a, @DeLivera2015, @Gullberg2004] (ii) quality control samples ( _NormQcsamples_) [@Dunn2011], (iii) scaling methods ( _NormScaling_) [@Scholz2004a, @Wang2003], and (iv) combined methods ( _NormCombined_) (@Kirwan2013). Unless otherwise stated, these functions assume that _featuredata_ has been log transformed beforehand.
+
+##### 4.21 _NormQcmets_ Normalisation methods based on quality control metabolites 
+
+The approaches in _NormQcmets_ use internal, external standards and other quality control metabolites. These include the _is_ method which uses a single standard [@Gullberg2004], the _ccmn_ (cross contribution compensating multiple internal standard) method [@Redestig2009],  the _nomis_ (normalization using optimal selection of multiple internal standards) method [@Sysi-Aho2007], and the remove unwanted variation methods [@Gagnon-bartsch2014] as applied to metabolomics using "ruv2" [@DeLivera2012a], "ruvrand" and "ruvrandclust" [@DeLivera2015]. Note that _ruv2_ is an application specific method designed for identifying biomarkers using a linear model that adjusts for the unwanted variation component. 
+
+The implementation is as follows:
+```{r eval=FALSE}
+NormQcmets <- function(featuredata, factors = NULL, method = c("is", "nomis", "ccmn",
+  "ruv2", "ruvrand", "ruvrandclust"), isvec = NULL, ncomp = NULL,
+  k = NULL, plotk = FALSE, lambda = NULL, qcmets = NULL,
+  maxIter = 200, nUpdate = 100, lambdaUpdate = TRUE, p = 2,
+  saveoutput = FALSE, outputname = NULL,...)
+```
+
+Several examples are given below: 
+
+```{r warning=F, cache=TRUE, message=FALSE}
+##'nomis' method
+Norm_nomis <-NormQcmets(imp$featuredata, method = "nomis", 
+                        qcmets = which(metabolitedata_eg$IS ==1))
+#Norm_nomis
+#Norm_nomis$featuredata
+
+##'ccmn' method
+Norm_ccmn <-NormQcmets(imp$featuredata, method = "ccmn", 
+                       qcmets = which(metabolitedata_eg$IS ==1),
+                       factors=sampledata_eg$gender)
+#Norm_ccmn
+#Norm_ccmn$featuredata
+
+##`median' method
+Norm_med <- NormScaling(imp$featuredata, method = "median")
+#Norm_med
+#Norm_med$featuredata
+
+##`ruv2' method
+factormat<-model.matrix(~gender +Age +bmi, sampledata_eg)
+#head(factormat)
+Norm_ruv2<-NormQcmets(imp$featuredata, factormat=factormat,method = "ruv2", 
+                      k=2, qcmets = which(metabolitedata_eg$IS ==1))
+#Norm_ruv2
+
+##`is' method
+Norm_is <-NormQcmets(imp$featuredata, method = "is", 
+                       isvec = imp$featuredata[,which(metabolitedata_eg$IS ==1)[1]])
+#Norm_is
+#Norm_is$featuredata
+```
+
+
+##### 4.22 _NormQcsamples_ Normalisation methods based on quality control samples
+
+This function is based on the quality control sample based robust LOESS (locally estimated scatterplot smoothing) signal correction (QC-RLSC) method as described by @Dunn2011 and impletemented statTarget [@Luan2017]. Notice that for this approach featuredata is not log transformed a priori. By default, the function log transforms the data after normalization, and this can be changed by setting _lg=FALSE_.
+
+```{r eval=FALSE}
+NormQcsamples<- function(featuredata, sampledata, method = c("rlsc"), span = 0,
+  deg = 2, lg = TRUE, saveoutput = FALSE,
+  outputname = "qcsample_results", ...)
+```
+
+Example implementation is given below. The _sampledata_ should contain the batch number, the class and the run order, with column names 'batch', 'class' and 'order' respectively. For the QCs samples, 'class' should be allocated as 0.
+```{r fig.width = 5, fig.height=5}
+ data(Didata)
+ dataview(Didata$sampledata)
+```
+
+```{r fig.width = 5, fig.height=5}
+#Not run here due to lengthy output
+#Norm_rlsc<- NormQcsamples(sampledata=Didata$sampledata[order(Didata$sampledata$order),],
+#               featuredata=Didata$featuredata[order(Didata$sampledata$order),])
+#Norm_rlsc
+```
+ 
+
+##### 4.23 _NormScaling_ Normalisation methods based on scaling
+
+The scaling normalization methods [@Scholz2004a, @Wang2003] included in the package are normalization to a total sum,  normalisation by the median or mean of each sample, and are denoted by _sum_, _median_, and _mean_ respectively. The method _ref_ normalises the metabolite abundances to a specific reference vector such as the sample weight or volume. 
+
+```{r eval=FALSE}
+NormScaling<-function(featuredata, method = c("median", "mean", "sum", "ref"),
+  refvec = NULL, saveoutput = FALSE, outputname = NULL, ...)
+```
+
+An example,
+```{r eval=TRUE }
+ Norm_med <- NormScaling(imp$featuredata, method = "median")
+ Norm_med
+```
+
+##### 4.24 _NormCombined_ Normalisation methods based on a combination of methods
+
+In some circumstances, researchers use a combination of the above normalizations (i.e., one method followed by another). This can be achieved using the _NormCombined_ function. The function defaults to employing 'rlsc' approach followed by the `median'.
+
+```{r eval=FALSE}
+NormCombined<-function(featuredata, methods = c("rlsc", "median"),
+  savefinaloutput = FALSE, finaloutputname = NULL, ...)
+```
+
+For instance,
+```{r fig.width = 5, fig.height=5}
+#Not run due to lenghty output
+#Norm_comb<- NormCombined(featuredata=Didata$featuredata[order(Didata$sampledata$order),],
+#                          sampledata=Didata$sampledata[order(Didata$sampledata$order),],
+#                          methods=c("rlsc","median"))
+#Norm_comb
+```
+
+## 4.3 Assessing and choosing a normalization method
+
+The criteria for assessing and choosing a normalization method implemented in this package have been described in detail by @DeLivera2012a, @DeLivera2015 and @Gagnon-bartsch2014.
+
+#### 4.31 Identifying biomarkers 
+
+##### 4.31a Exploring the impact of the normalization methods on positive and negative control metabolites using volcano plots
+
+Examples of fitting a linear model to normalized data in order to identify biomarkers associated with factors of interest.
+
+```{r warning=F, cache=TRUE, message=FALSE}
+unadjustedFit<-LinearModelFit(featuredata=imp$featuredata,
+                              factormat=factormat,
+                              ruv2=FALSE)
+#unadjustedFit
+isFit<-LinearModelFit(featuredata=Norm_is$featuredata,
+                       factormat=factormat,
+                       ruv2=FALSE)
+#isFit
+ruv2Fit<-LinearModelFit(featuredata=imp$featuredata,
+                        factormat=factormat,
+                        ruv2=TRUE,k=2,
+                        qcmets = which(metabolitedata_eg$IS ==1))
+#ruv2Fit
+```
+
+```{r fig.width = 10, fig.height=8}
+#Exploring metabolites associated with age
+lcoef_age<-list(unadjusted=unadjustedFit$coefficients[,"Age"],
+                is_age=isFit$coefficients[,"Age"],
+                ruv2_age=ruv2Fit$coefficients[,"Age"])
+lpvals_age<-list(unadjusted=unadjustedFit$p.value[,"Age"],
+                 is=isFit$p.value[,"Age"],
+                 ruv2=ruv2Fit$p.value[,"Age"])
+
+negcontrols<-metabolitedata_eg$names[which(metabolitedata_eg$IS==1)]                   
+
+CompareVolcanoPlots(lcoef=lcoef_age, 
+                    lpvals_age, 
+                    normmeth = c(":unadjusted", ":is", ":ruv2"),
+                    xlab="Coef",
+                    negcontrol=negcontrols)
+```
+
+
+```{r fig.width = 10, fig.height=8}
+#Exploring metabolites associated with BMI
+lcoef_bmi<-list(unadjusted=unadjustedFit$coefficients[,"bmi"],
+                   is=isFit$coefficients[,"bmi"],
+                   ruv2=ruv2Fit$coefficients[,"bmi"])
+
+lpvals_bmi<-list(unadjusted=unadjustedFit$p.value[,"bmi"],
+                    is=isFit$p.value[,"bmi"],
+                    ruv2=ruv2Fit$p.value[,"bmi"])
+
+CompareVolcanoPlots(lcoef=lcoef_bmi, 
+                    lpvals_bmi, 
+                    normmeth = c(":unadjusted", ":is", ":ruv2"),
+                    xlab="Coef",
+                    negcontrol=negcontrols)
+```
+
+
+```{r fig.width = 10, fig.height=8}
+#Exploring metabolites associated with gender
+lcoef_gender<-list(unadjusted=unadjustedFit$coefficients[,"gendercode_1"],
+                is_age=isFit$coefficients[,"gendercode_1"],
+                ruv2_age=ruv2Fit$coefficients[,"gendercode_1"])
+lpvals_gender<-list(unadjusted=unadjustedFit$p.value[,"gendercode_1"],
+                 is=isFit$p.value[,"gendercode_1"],
+                 ruv2=ruv2Fit$p.value[,"gendercode_1"])
+poscontrols_gender<-metabolitedata_eg$names[which(metabolitedata_eg$pos_controls_gender==1)]                   
+CompareVolcanoPlots(lcoef=lcoef_gender, 
+                    lpvals_gender, 
+                    normmeth = c(":unadjusted", ":is", ":ruv2"),
+                    negcontrol=negcontrols, 
+                    poscontrol=poscontrols_gender)
+```
+
+
+
+##### 4.31b Examine the the residuals obtained from a fitted linear model using RLA plots
+
+An example:
+
+```{r fig.width = 8, fig.height=5}
+lresiddata<-list(unadjusted=unadjustedFit$residuals,
+                 is=isFit$residuals,
+                 ruv2=ruv2Fit$residuals)
+CompareRlaPlots(lresiddata,groupdata=sampledata_eg$batch,
+                yrange=c(-3,3),
+               normmeth = c("unadjusted:","is:","ruv2:"))
+```
+
+##### 4.31c Explore the distribution of p-values using histograms
+
+```{r fig.width = 8, fig.height=5}
+  ComparePvalHist(lpvals = lpvals_age,ylim=c(0,40),
+  normmeth = c("unadjusted","is","ruv2"))
+```
+
+##### 4.31d Explore the consistency between results from different platforms using venn plots
+
+The example datasets did not involve multiple platforms. In what follows, for the purpose of demonstrating _VennPlot_, we simply compare the results from different normalisation methods.
+
+```{r fig.width = 5, fig.height=5}
+  lnames<- list(names(ruv2Fit$coef[,"Age"])[which(ruv2Fit$p.value[,"Age"]<0.05)],
+                names(unadjustedFit$coef[,"Age"])[which(unadjustedFit$p.value[,"Age"]<0.05)],
+                names(isFit$coef[,"Age"])[which(isFit$p.value[,"Age"]<0.05)])
+  
+  VennPlot(lnames, group.labels=c("ruv2","unadjusted","is"))
+```
+
+
+#### 4.32 Clustering 
+
+##### 4.32a Exploration of the normalized data and the removed component of unwanted variation 
+
+```{r warning=F, cache=TRUE, message=FALSE}
+data(UVdata)
+dataview(UVdata$featuredata)
+dataview(UVdata$sampledata)
+dataview(UVdata$metabolitedata)
+
+#Not RUN due to user input; we set k=1 each and saved normalized data as uv_ruvrandclust
+#uv_ruvrand_norm<-NormQcmets(featuredata=UVdata$featuredata,
+#                            method="ruvrandclust",
+#                            qcmets=which(UVdata$metabolitedata$neg_control==1),
+#                            k=1)
+
+data("uv_ruvrandclust")
+dataview(uv_ruvrandclust$featuredata)
+
+```
+
+```{r warning=F, cache=TRUE, message=FALSE}
+#INCLUDE A PAIRS COMPAREPCA PLOT HERE 
+```
+
+```{r fig.width = 8, fig.height=5}
+ lfeaturedata<-list(unadj=UVdata$featuredata,ruv=uv_ruvrandclust$featuredata,
+                    ruvuv=uv_ruvrandclust$uvdata)
+ CompareRlaPlots(lfeaturedata,
+                 groupdata=interaction(UVdata$sampledata$temperature,UVdata$sampledata$instrument),
+                 normmeth=c("Unadjusted:", "RUVrandclust normalized:", 
+                            "RUVrandclust: removed uv:"),
+                 yrange=c(-3,3))
+```
+
+##### 4.32b clustering accuracy of the known samples
+
+```{r fig.width = 5, fig.height=5}
+ hca<-Dendrogram(featuredata=uv_ruvrandclust$featuredata,
+                 groupdata=UVdata$sampledata$group, 
+                 clust=TRUE, 
+                 nclust=2)
+ 
+ HeatMap(uv_ruvrandclust$featuredata,
+          UVdata$sampledata$group,interactiveplot = TRUE, 
+          colramp=c(75, "magenta", "green"),
+          distmethod = "manhattan", aggmethod = "ward.D")
+
+```
+
+
+
+#### 4.33 Classification 
+
+#### 4.33a Explore the normalized data and the removed component of unwanted variation 
+
+Follow a similar approach to section _4.32a_
+
+#### 4.33b Classification accuracy of known samples
+
+
+```{r fig.width = 5, fig.height=5}
+  svm<-SvmFit(featuredata=uv_ruvrandclust$featuredata, 
+              groupdata=UVdata$sampledata$group,
+              crossvalid=TRUE,
+              k=5,
+              rocplot = TRUE)
+```
+
+
+#### 4.34 Correlation analysis 
+
+#### 4.34a Explore the normalized data and the removed component of unwanted variation similar to above
+
+Follow a similar approach to section _4.32a_
+
+#### 4.34b  Explore the distribution of correlation coefficients and the p-values 
+
+See [@Freytag2015] for a detailed example of this concept.
+
+```{r fig.width = 5, fig.height=10}
+lcor<-list(Corr(UVdata$featuredata)$results[,3],
+  Corr(uv_ruvrandclust$featuredata)$results[,3])
+ComparePvalHist(lcor,normmeth = c("unadjusted","ruvrandclust"),
+                xlim=c(-1,1), xlab="Correlation coefficients",ylim=c(0,120)) 
+
+lcor_p<-list(Corr(UVdata$featuredata)$results[,4],
+  Corr(uv_ruvrandclust$featuredata)$results[,4])
+ComparePvalHist(lcor_p,normmeth = c("unadjusted","ruvrandclust"),
+                xlim=c(0,1),ylim=c(0,200)) 
+
+```
+
+
+
+
+##References
+
+
