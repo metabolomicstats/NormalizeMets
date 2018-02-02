@@ -9,6 +9,8 @@ Contact: <br />
 
 ## Software for Normalising and Analysing metabolomics data.
 
+## Update
+For the excel version, go directly to the ExNormalizeMets repository. An updated version of the ExNormalizeMets repository (update1) is available but is not commited to the master yet. This repository contains most up to date information so please refer to that repository (https://github.com/metabolomicstats/ExNormalizeMets/tree/update1).
 
 ### About the package:
 
@@ -24,7 +26,7 @@ The input data format consists of three parts: (i) "featuredata" which is the me
 
 #### The Excel interface
 
-This file ExNormalizeMets.xlsm contains the Microsoft Excel user interface for the publicly available R package NormalizeMets. The installation of the R pacakge is required for the software to be used.
+Plese refer to the ExNormalizeMets repository for:
 
 #### Steps for installing the R package (for use in excel):
 
