@@ -444,7 +444,7 @@ ComparePcaPlots(featuredata.norm, list(imp$sampledata[,params$gfactor]), lmain =
 Use RLA plots to explore the component of unwanted variation removed by normalization. 
 
 
-```{r comparerlauv, eval = FALSE, include=FALSE, fig.align='center', fig.width=9, fig.height=7}
+```{r comparerlauv, eval = FALSE, include=FALSE, fig.align='center', fig.width=9, fig.height=7, results='hold'}
 
 if (length(which(normmeth.fit=="ruvrand"))!=0){
   ruvrandnorm<-normalisedAll[[which(normmeth.fit=="ruvrand")-1]]
@@ -510,6 +510,7 @@ svm<-SvmFit(featuredata=normalisedDclust[[ii]],
 
 ## Correlation analysis 
 
+
 ### Explore the normalized data and the removed component of unwanted variation 
 
 Use the RLA and PCA plots above.
@@ -536,6 +537,10 @@ ComparePvalHist(lcorcoef,normmeth = c("unadjusted", unlist(normmethclust)),
                 xlim=c(-1,1), xlab="Correlation coefficients") 
 
 ```
+
+
+
+
 
 ```{r corrp, eval = TRUE, fig.align='center', fig.width=5, fig.height=5, results='hold'}
 
