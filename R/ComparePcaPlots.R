@@ -213,6 +213,7 @@ ComparePcaPlots <- function(lfeaturedata, lgroupdata, saveplot=FALSE,
       pairgg[[1]] <- ggpairs(pca_gg[[jj]],columns = 1:n,aes(colour = Grouping),
                              upper = list(continuous="points"), legend = c(1,3),
                              title = lmain[[jj]]) + ggplot2::theme(legend.position = "right")
+                     
       
       for (ii in 1:n){
         textgg <- ggally_text(paste(

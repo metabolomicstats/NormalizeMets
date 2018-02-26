@@ -15,7 +15,7 @@ NormQcmets(featuredata, factors = NULL, factormat = NULL, method = c("is",
  This is a dataframe with metabolites in columns and samples in rows.
 Unique sample names should be provided as row names.}
 
-\item{factors}{For the ccmn method. A vector describing biological factors.}
+\item{factors}{For the ccmn method. A vector or a dataframe containing biological factors.}
 
 \item{factormat}{For the ruv2 method. A design matrix for the linear model, consisting of biological factors of interest.}
 

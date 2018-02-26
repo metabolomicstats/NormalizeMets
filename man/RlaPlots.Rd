@@ -8,8 +8,8 @@ RlaPlots(featuredata, groupdata, minoutlier = 0.5, type = c("ag", "wg"),
   saveplot = FALSE, plotname = "RLAPlot", savetype = c("png", "bmp",
   "jpeg", "tiff", "pdf"), interactiveplot = TRUE, interactiveonly = TRUE,
   saveinteractiveplot = FALSE, interactivesavename = "interactiveRlaPlot",
-  cols = NULL, cex.axis = 0.8, las = 2, ylim = c(-2, 2), oma = c(7, 4,
-  4, 2) + 0.1, xlabel = "Samples", showlegend = TRUE, ...)
+  cols = NULL, cex.axis = 0.7, las = 2, ylim = c(-2, 2), oma = c(3, 3,
+  3, 5) + 0.1, xlabel = "Samples", showlegend = TRUE, ...)
 }
 \arguments{
 \item{featuredata}{featuredata A data frame in the featuredata format. 

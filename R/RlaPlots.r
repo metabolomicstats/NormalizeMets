@@ -58,7 +58,7 @@ RlaPlots <- function(featuredata, groupdata, minoutlier = 0.5, type=c("ag", "wg"
                      interactiveplot=TRUE, interactiveonly = TRUE,
                      saveinteractiveplot = FALSE,
                      interactivesavename = "interactiveRlaPlot",
-                     cols=NULL,cex.axis=0.8, las=2, ylim=c(-2, 2), oma=c(7, 4, 4, 2) + 0.1, 
+                     cols=NULL,cex.axis=0.7, las=2, ylim=c(-2, 2), oma=c(3, 3, 3, 5) + 0.1, 
                      xlabel="Samples", showlegend = TRUE, ...)
 {
   
@@ -72,6 +72,11 @@ RlaPlots <- function(featuredata, groupdata, minoutlier = 0.5, type=c("ag", "wg"
   # get unique groups
   groups <- factor(groupdata[, 1], levels = unique(groupdata[, 1]))
   unique.groups <- levels(groups)
+  
+  # Adjust logical
+  if (interactiveplot == FALSE){
+  	interactiveonly <- FALSE
+  }
 
   
   # Get the median and standardise the data matrix, reordering to cluster by group
@@ -141,34 +146,39 @@ RlaPlots <- function(featuredata, groupdata, minoutlier = 0.5, type=c("ag", "wg"
     med_vals <- apply(out_data, 1, median)
     sample_n <- vector(,length(med_vals))
     for (i in 1:length(med_vals)){
-      if (abs(med_vals[i]) >= minoutlier){
+      temp.i <- i/10
+      if (temp.i - round(temp.i) == 0){
         sample_n[i] <- rownames(out_data)[i]
       } else {
         sample_n[i] <- " "
       }
     }
-  
+    
+    par(mar = oma)
   
     boxplot(t(out_data),
-          cex.axis=cex.axis,                 # font size
+          cex.lab = 1,
+          cex.axis = cex.axis,
+          cex.main = 1.2,
+    	    main = plotname,
           las=las,                           # label orientation
           col=box_cols,                      # colours
-          ylim=ylim,                         # y-axis range
-          oma=oma,                           # outer margin size
+          ylim=ylim,                         # y-axis range                         # outer margin size
           boxlwd=0.4,
           whisklty=1,
           whisklwd=0.5,
           whiskcol="grey",
           outpch=20,
-          outcex=0.3,
+          outcex=0.1,
           show.names=FALSE,
-          xlab=xlabel,
+          xlab="",
           ...
     )
-  
+    
     axis(1, 1:length(med_vals), labels=sample_n, las=2, line=(-0.5), tick=0, 
-        cex.axis=cex.axis, cex.lab = 0.8)
-  
+        cex.axis=cex.axis, cex.lab = 1,)
+    
+    title(xlab = xlabel, line = 1.8, cex.lab = 1)
     abline(h=0)
   
     par(xpd=TRUE)        #allow the legend to be drown outside the original plot
@@ -176,13 +186,13 @@ RlaPlots <- function(featuredata, groupdata, minoutlier = 0.5, type=c("ag", "wg"
     # legend to be ploted differently if the plot is saved or ploted within r
     if (saveplot == TRUE) {
     
-      legend("top",inset = c(1,-0.06),bg = "white", legend = unique.groups,
-            col=cols, lty = c(1,1),lwd = c(2.5,2.5),cex = 1.2, horiz = TRUE)
+      legend("right",inset = c(1,-0.06),bg = "white", legend = unique.groups,
+         col=cols, lty = c(1,1),lwd = c(2.5,2.5),cex = 1.2, horiz = TRUE)
       dev.off()
   
       } else {
-      legend("top",inset = c(1,-0.1), legend = unique.groups,
-            col=cols, lty = c(1,1),lwd = c(2.5,2.5),cex = 0.7, horiz = TRUE)
+      legend("left",inset = c(1,0), legend = unique.groups,
+            col=cols, lty = c(1,1),lwd = c(2.5,2.5),cex = 0.7, horiz = FALSE)
       }
   }
   

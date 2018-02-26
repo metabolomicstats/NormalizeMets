@@ -17,7 +17,7 @@
 #' @param featuredata featuredata A data frame in the featuredata format. 
 #'  This is a dataframe with metabolites in columns and samples in rows.
 #' Unique sample names should be provided as row names.
-#' @param factors For the ccmn method. A vector describing biological factors. 
+#' @param factors For the ccmn method. A vector or a dataframe containing biological factors. 
 #' @param factormat For the ruv2 method. A design matrix for the linear model, consisting of biological factors of interest.
 #' @param method A character string indicating the required normalization
 #' method. Must be one of "\code{is}", "\code{nomis}", "\code{ccmn}", "\code{ruv2}", 
@@ -148,10 +148,10 @@ NormQcmets <-function(featuredata, factors = NULL, factormat=NULL,
     }
   }
   
-  #factors should be a vector
+  #factors should be a vector or a data frame c("data.frame", "list", "matrix"))
   if (!is.null(factors)) {
-    if (class(factors) %in% c("data.frame", "list", "matrix")) {
-      stop("factors should be a vector")
+    if (class(factors) %in% c("list", "matrix")) {
+      stop("factors should be a vector or a data frame.")
     }
   }
   
@@ -218,7 +218,7 @@ NormQcmets <-function(featuredata, factors = NULL, factormat=NULL,
     if (method == "ccmn") {
       norm_data <- t(normalize(t(pre_norm), "crmn", 
                                standards=ncvec, ncomp=ncomp,
-                               factor=model.matrix(~-1+factors),
+                               factors=model.matrix(~-1+. , data=data.frame(factors)),#factor=model.matrix(~-1+factors),
                                lg=FALSE)
       )
     } else if (method == "nomis") {

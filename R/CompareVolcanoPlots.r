@@ -155,7 +155,7 @@ CompareVolcanoPlots <- function(lcoef, lpvals, normmeth = NULL,
   
   p <- eval(parse(text = subp))
   
-  p <- layout(p)
+  p <- layout(p, title = interactiveplotname)
   
   
   if (saveinteractiveplot){                                               
