@@ -58,7 +58,7 @@ RlaPlots <- function(featuredata, groupdata, minoutlier = 0.5, type=c("ag", "wg"
                      interactiveplot=TRUE, interactiveonly = TRUE,
                      saveinteractiveplot = FALSE,
                      interactivesavename = "interactiveRlaPlot",
-                     cols=NULL,cex.axis=0.7, las=2, ylim=c(-2, 2), oma=c(3, 3, 3, 5) + 0.1, 
+                     cols=NULL,cex.axis=0.7, las=2, ylim= NULL, oma=c(3, 3, 3, 5) + 0.1, 
                      xlabel="Samples", showlegend = TRUE, ...)
 {
   
