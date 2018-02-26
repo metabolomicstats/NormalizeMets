@@ -31,7 +31,7 @@ params:
   
 ---
 
-```{r setup, include=TRUE}
+```{r setup, include=FALSE, eval= TRUE}
 knitr::opts_chunk$set(echo = FALSE)
 library(NormalizeMets)
 
