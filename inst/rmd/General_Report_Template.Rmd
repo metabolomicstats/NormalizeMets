@@ -1,0 +1,550 @@
+---
+title: "NormalizeMets: Report"
+bibliography: library.bib
+output:
+  html_document:
+    toc: true
+      
+params:
+  featuredata: NULL
+  sampledata: NULL
+  metabolitedata: NULL
+  logTrans: NULL
+  missingvals: NULL
+  factorOI: NULL
+  covars: NULL
+  gfactor: NULL
+  missingk: NULL
+  saveplots: FALSE
+  normmeth: NULL
+  normtype: NULL
+  Nmethods: NULL
+  isvec: NULL
+  qcmets: NULL
+  k: NULL
+  fitintercept: NULL
+  rlsc.sampledata: NULL
+  scaling.refvec: NULL
+  ccmn.factor: NULL
+  volcano.range: NULL
+  default: TRUE
+  
+---
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = FALSE)
+library(NormalizeMets)
+
+if (is.null(params$featuredata)){
+  data(mixdata)
+  featuredata <- mixdata$featuredata
+  sampledata <- mixdata$sampledata
+  metabolitedata <- mixdata$metabolitedata
+} else {
+  featuredata <- params$featuredata
+  sampledata <- params$sampledata
+  metabolitedata <- params$metabolitedata
+}
+
+```
+# Before Normalization
+
+## Log transforming, handling missing values, and visualization 
+
+
+##### Log transforming the data
+
+Abundances of metabolites in a data matrix usually have a right skewed distribution. Therefore, an appropriate transformation is needed to obtain a more symmetric distribution. The metabolomics literature have discussed various transformations such as log, cubic and square root as ways of handling these, most of which belong to the family of power transformations. However, the log transformation is usually adequate for statistical purposes [@DeLivera2013]. 
+
+##### Handling missing values 
+
+It is important to reduce the number of missing values as much as possible by using an effective pre-processing procedure. For example, a secondary peak picking method can be used for LC-MS data to fill in missing peaks which are not detected and aligned. Depending on the nature of missing data, either the kth nearest neighbour algoritm [@Troyanskaya2001] or replacing the missing values by half the minimum of the data matrix is often used in metabolomics.
+
+```{r missinglog, cache = TRUE, include=TRUE}
+# log transform
+if (params$logTrans == TRUE){
+  featuredata_log <- LogTransform(featuredata, zerotona = TRUE)$featuredata
+}
+
+
+# choose missingvalues k
+if (is.null(params$missingk)){
+  missingK <- min(10,floor(ncol(featuredata_log)*0.1))
+} else {
+  missingK <- params$missingk
+}
+
+# remove missing values
+imp <- MissingValues(featuredata = featuredata_log, sampledata = sampledata, metabolitedata = metabolitedata, method = params$missingvals, k = missingK)
+
+# remove missing without log transform if required (for rlsc) 
+if (!is.null(params$rlsc.sampledata)){
+  imp$featuredata.nolog <- MissingValues(featuredata = featuredata, sampledata = sampledata, metabolitedata = metabolitedata, method = params$missingvals, k = missingK)$featuredata
+}
+```
+
+
+The log transformed data matrix can then be explored using various plots.
+
+
+### RLA Plots
+
+RLA (Relative Log Abundance) plots are a good Way of visualising the data. Consistent sized and centered boxes are desirable. See [@DeLivera2012a @DeLivera2015] for several examples.
+
+```{r samplerla, eval = TRUE, fig.align='center', results='asis', fig.width = 9}
+RlaPlots(imp$featuredata, imp$sampledata[,params$gfactor], saveinteractiveplot = params$saveplots, plotname = "Sample-wise RLA plot")
+
+```
+
+A similar plot can be used to explore metabolites.
+
+```{r metabrla, eval = TRUE, fig.align='center', results='asis', fig.width = 9}
+RlaPlots(t(imp$featuredata), rep("group",dim(imp$featuredata)[2]), saveinteractiveplot = params$saveplots, plotname = "Metabolite-wise RLA plot",xlabel="Metabolites")
+
+```
+
+
+### PCA Plots
+
+PCA plots can be used to identify any outlying samples and to get a preliminary understanding of the structure of the data.
+
+```{r pca1, eval = TRUE, fig.align='center', results='asis'}
+# PcaPlots(imp$featuredata, imp$sampledata[,params$factorOI], varplot = TRUE, multiplot = TRUE, interactiveonly = TRUE, interactiveplots = FALSE, userinput = FALSE)
+
+PcaPlots(imp$featuredata, imp$sampledata[,params$gfactor], varplot = TRUE, multiplot = TRUE, interactiveonly = TRUE, interactiveplots = FALSE, userinput = FALSE)
+```
+
+<!-- First look at the Variance plot (varplot) to see what proportion of the overall variation is explained by each principal component (usually interested in the first few that account for most of the variance). -->
+
+```{r pca2, eval = TRUE, fig.align='center', results='asis', include = TRUE,fig.width=9}
+my.pca <- PcaPlots(imp$featuredata, imp$sampledata[,params$gfactor], varplot = FALSE, multiplot = FALSE, interactiveonly = TRUE, interactiveplots = TRUE, userinput = FALSE, returninteractive = TRUE)
+my.pca[[1]]
+cat("\n\n________________________________________________________________________________________________________________\n\n\n\n")
+my.pca[[2]]
+```
+
+
+### Dendrogram
+
+Using a dendrogram to visualize clusters in the data. 
+
+```{r dendrogram, eval=TRUE, echo=FALSE, fig.align='center', warning=FALSE,results='hold'}
+hca<-Dendrogram(imp$featuredata,imp$sampledata[,params$gfactor])
+```
+
+
+### HeatMap
+
+Using a heat map where samples and metabolites are sorted according to their respective dendrograms. 
+
+```{r heatmap, eval = TRUE,fig.align='center', fig.width = 9, warning= FALSE}
+
+HeatMap(imp$featuredata, imp$sampledata[,params$gfactor], return.interactive = TRUE, interactiveplot = TRUE, numeric.mets = TRUE)
+
+```
+
+
+# Normalization
+
+Normalization methods presented in this package are divided into four categories, as those which use (i) internal, external standards and other quality control metabolites [@Sysi-Aho2007, @Redestig2009, @DeLivera2012a, @DeLivera2015, @Gullberg2004] (ii) quality control samples  [@Dunn2011], (iii) scaling methods  [@Scholz2004a, @Wang2003], and (iv) combined methods (@Kirwan2013). A brief summary of these methods are presented in Table 1 of [@DeLivera2015].
+
+### Normalisation methods based on quality control metabolites 
+
+These approaches use internal, external standards and other quality control metabolites. These include the _is_ method which uses a single standard [@Gullberg2004], the _ccmn_ (cross contribution compensating multiple internal standard) method [@Redestig2009],  the _nomis_ (normalization using optimal selection of multiple internal standards) method [@Sysi-Aho2007], and the remove unwanted variation methods [@Gagnon-bartsch2014] as applied to metabolomics using "ruv2" [@DeLivera2012a], "ruvrand" and "ruvrandclust" [@DeLivera2015]. Note that _ruv2_ is an application specific method designed for identifying biomarkers using a linear model that adjusts for the unwanted variation component. 
+
+
+### Normalisation methods based on quality control samples
+
+This function is based on the quality control sample based robust LOESS (locally estimated scatterplot smoothing) signal correction (QC-RLSC) method as described by @Dunn2011 and impletemented statTarget [@Luan2017]. Notice that for this approach log transforms the data after normalization.
+
+### Normalisation methods based on scaling
+
+The scaling normalization methods [@Scholz2004a, @Wang2003] included in the package are normalization to a total sum,  normalisation by the median or mean of each sample, and are denoted by _sum_, _median_, and _mean_ respectively. The method _ref_ normalises the metabolite abundances to a specific reference vector such as the sample weight or volume. 
+
+### Normalisation methods based on a combination of methods
+
+In some circumstances, researchers use a combination of the above normalizations (i.e., one method followed by another). 
+
+
+Here the following normalization methods were performed.
+
+
+```{r NormalizeData, eval = TRUE, cache=TRUE, include=TRUE, hold=TRUE}
+# create list to store normalised info and normalise
+normalisedD <- list()    
+qcmets <- params$qcmets   ###### set some val for later use
+for (ii in 1:params$Nmethods){
+  
+  cat(paste("Normalised using ",params$normmeth[[ii]],"...."))
+  
+  if (params$normtype[ii] == "NormQcmets"){
+  
+    if(params$normmeth[[ii]] == "ruv2"){
+      normalisedD[[ii]] <- "ruv2"
+      
+    } else {
+      
+      # fill in qcmets info..
+      if (is.null(params$qcmets)){
+        qcmets <- stop("qcmets missing")
+      } else {
+        qcmets <- which(imp$metabolitedata[,params$qcmets]=="IS"|imp$metabolitedata[,params$qcmets]==1)
+      }
+      
+      if (!is.null(params$ccmn.factor) & params$normmeth[[ii]] == "ccmn"){
+        factors <- imp$sampledata[,params$ccmn.factor]
+      } else {
+        factors <- NULL
+      }
+      
+      # normalise 
+      normalisedD[[ii]] <- NormQcmets(imp$featuredata, factors = factors, method = params$normmeth[[ii]], 
+                                      isvec = params$isvec, ncomp=NULL, k = params$k, plotk = FALSE, 
+                                      lambda =NULL, qcmets = qcmets)$featuredata
+      # if removing is, make sure removed for all
+      #if (ncol(normalisedD[[ii]]) == ncol(imp$featuredata)){  
+      #  normalisedD[[ii]] <- normalisedD[[ii]][,-qcmets]
+      #}                                                    # do this later for all methods together
+    }
+    
+  } else if (params$normtype[ii] == "NormQcsamples"){
+    # GO 14
+    normalisedD[[ii]] <- NormQcsamples(imp$featuredata.nolog, sampledata = params$rlsc.sampledata, method = params$normmeth[[ii]])$featuredata
+    ###
+    
+  } else if (params$normtype[ii] == "NormScaling"){
+    
+    
+    normalisedD[[ii]] <- NormScaling(imp$featuredata, method = params$normmeth[[ii]], refvec = params$scaling.refvec)$featuredata
+    ###
+  } else if (params$normtype[ii] == "NormCombined"){
+    
+    # check if data shouldn't be log transformed (rlsc)
+    if (params$normmeth[[ii]][1] == "rlsc"){
+      combined.featuredata <- imp$featuredata.nolog
+    } else {
+      combined.featuredata <- imp$featuredata
+    }
+    
+    # normlise and pass all parameters...
+    normalisedD[[ii]] <- NormCombined(combined.featuredata, methods = params$normmeth[[ii]],
+                                    factors = sampledata[,params$factorOI], isvec = params$isvec,
+                                    ncomp=NULL, k = params$k, plotk = FALSE, lambda = NULL, 
+                                    qcmets = qcmets,
+                                    sampledata = params$rlsc.sampledata,
+                                    refvec = params$scaling.refvec
+                                    )$featuredata
+  }
+  
+  cat("Done \n\n")
+}
+
+
+```
+
+# Post Normalization
+
+## Identifying biomarkers
+
+### Explore the impact of the normalization methods on positive and negative control metabolites 
+
+Volcano plots can be used to assess the impact of normalizing on positive and negative control metabolites. See [@DeLivera2012a], [@DeLivera2013], and [@DeLivera2015] for details.
+
+```{r NromalizedCompSetup, eval = TRUE, cache = TRUE}
+
+# organise normalised data so it is easily used for the plots
+
+featuredata.norm <- list()
+normmeth.norm <- c()
+jj <- 1
+
+
+#Check if is columns have been removed from any of the methods
+method_ncols <- c()
+for (ii in 1:length(normalisedD)){
+  method_ncols <- c(method_ncols, ncol(normalisedD[[ii]]))
+}
+min_ncols <- min(method_ncols)  
+
+# first is unadjusted - make sure to remove qcmets columns if needed
+if(ncol(imp$featuredata)> min_ncols){
+  featuredata.norm[[1]] <- imp$featuredata[,-qcmets]
+} else{
+  featuredata.norm[[1]] <- imp$featuredata
+}
+###
+
+## need to make sure this is done for other norm methods if qc removed for at least 1 method
+normmeth.norm[[1]] <- "unadjusted"
+
+
+for (ii in 1:params$Nmethods){
+  # if ruv2, no normalised data
+  if( params$normmeth[[ii]] != "ruv2"){
+    
+    jj <- jj+1
+    if(method_ncols[ii] > min_ncols){
+      featuredata.norm[[jj]] <- normalisedD[[ii]][,-qcmets]
+    } else{
+      featuredata.norm[[jj]] <- normalisedD[[ii]]
+    }
+    normmeth.norm[[jj]] <- params$normmeth[[ii]][1]   
+  }
+}
+### 
+
+N.comp.plot <- jj
+
+
+```
+
+<!-- ### Differential Expression comparison -->
+
+```{r fitLM, eval = TRUE, include = TRUE, cache = TRUE}
+
+fittedLM <- list()
+normmeth.fit <- c()
+
+
+xnam<-paste0(c(params$factorOI,params$covars))
+colnames(imp$featuredata)<-paste("m_", colnames(imp$featuredata),sep="")
+ynam<-paste0(colnames(imp$featuredata)[1])
+fmla <- as.formula(paste(paste(ynam," ~ "), paste(xnam, collapse= "+")))
+lmmat<-data.frame(imp$featuredata,imp$sampledata)
+colnames(lmmat)<-c(colnames(imp$featuredata),colnames(imp$sampledata))
+
+if (params$fitintercept == TRUE){
+  factor.mat <- model.matrix(fmla,lmmat)  
+  fOI.i <- 2 #Generating the volcano plot for one category or continuous variables
+} else {
+  factor.mat <- factor.mat[,-1]
+  fOI.i <- 1
+}
+
+
+fittedLM[[1]] <- LinearModelFit(imp$featuredata, factormat = factor.mat, ruv2 = FALSE, k = NULL, qcmets = qcmets)
+normmeth.fit[1] <- "unadjusted"
+
+for (ii in  1:Nmethods){
+  # check if ruv2 is required
+  if ( params$normmeth[ii][1] == "ruv2"){
+    fittedLM[[ii+1]] <- LinearModelFit(imp$featuredata, factormat = factor.mat, ruv2 = TRUE, k = params$k, qcmets = qcmets)
+    normmeth.fit[ii+1] <- "ruv2"
+  } else {
+    fittedLM[[ii+1]] <- LinearModelFit(normalisedD[[ii]], factormat = factor.mat, ruv2 = FALSE, k = NULL, qcmets = qcmets)
+    normmeth.fit[ii+1] <- params$normmeth[ii]   # combined methods naming
+  }
+}
+
+```
+
+
+```{r LMdata, eval = TRUE, cache= TRUE}
+
+Pvals <- list()
+adj.Pvals <- list()
+Coefs <- list()
+resids<-list()
+for (ii in 1:(Nmethods+1)){
+  Pvals[[ii]] <- fittedLM[[ii]][["p.value"]][,fOI.i]
+  adj.Pvals[[ii]] <- fittedLM[[ii]][["adj.p.value"]][,fOI.i]
+  Coefs[[ii]] <- fittedLM[[ii]][["coefficients"]][,fOI.i]
+  resids[[ii]]<-fittedLM[[ii]]$residuals
+}
+
+```
+
+
+```{r compVolc, eval = TRUE, fig.width=9, fig.height=7}
+
+CompareVolcanoPlots(lcoef = Coefs,lpvals = Pvals,normmeth = normmeth.fit, yrange = params$volcano.range)
+
+
+```
+
+
+### Compare the distribution of the p-values
+
+Use histograms to compare the distribution of the p-values obtained from the fitted linear model. If there are no differentially abundant metabolites present in the data set, the distribution of p-values should be uniform between zero and one. Hence, with the presence of some differentially abundant metabolites, a histogram of p-values should be uniformly distributed but with a peak close to zero [@DeLivera2015].
+
+
+```{r compPhist, eval = TRUE, fig.align='center', fig.width=9, fig.height=7}
+
+ComparePvalHist(lpvals = Pvals,normmeth = normmeth.fit)
+
+```
+
+
+
+### Examine the residuals obtained from a fitted linear model 
+
+Using RLA plots, the residuals obtained from the fitted linear model can be explored. These boxplots should have a median close to zero and low variation around the median. 
+
+
+```{r comparerlaresid, eval = TRUE, include=TRUE, fig.align='center', fig.width=9, fig.height=7}
+
+CompareRlaPlots(resids,groupdata=imp$sampledata[,params$gfactor],
+                yrange=c(-3,3),
+                normmeth = normmeth.norm, plottitle = "Sample-Wise Compare RLA of the residuals")
+
+#cat("\n _______________________________________________________________________________________________________\n\n\n")
+
+
+```
+
+
+### Explore the consistency between results from different platforms 
+
+Using venn plots, the consistency between results from different platforms can be assessed. In what follows, we simply compare the results from different normalisation methods.
+
+```{r compvenn, eval = TRUE, fig.align='center', fig.width=5, fig.height=5}
+lnames<-list()
+for (ii in 2:(Nmethods+1)){
+lnames[[ii]]<- names(Coefs[[ii]])[which(Pvals[[1]]<0.05)]
+}
+
+VennPlot(lnames[-1], group.labels=unlist(params$normmeth))
+
+```
+
+
+##  Clustering 
+
+
+### Visualisation of the normalized data 
+
+
+
+Use RLA plots,
+
+```{r comparerla, eval = TRUE, include=TRUE, fig.align='center', fig.width=9, fig.height=7}
+
+CompareRlaPlots(featuredata.norm, imp$sampledata[,params$gfactor], normmeth = normmeth.norm, yrange = c(-1,1), plottitle = "Sample-Wise Compare RLA") 
+
+#cat("\n _______________________________________________________________________________________________________\n\n\n")
+
+
+```
+
+
+
+Using PCA plots,
+
+```{r comparepca, eval = TRUE, include=TRUE, fig.align= 'center', fig.width=9, fig.height=8}
+
+ComparePcaPlots(featuredata.norm, list(imp$sampledata[,params$gfactor]), lmain = normmeth.norm)
+
+
+```
+
+
+
+### Visualisation of the removed unwanted variation component
+
+Use RLA plots to explore the component of unwanted variation removed by normalization. 
+
+
+```{r comparerlauv, eval = FALSE, include=FALSE, fig.align='center', fig.width=9, fig.height=7}
+
+if (length(which(normmeth.fit=="ruvrand"))!=0){
+  ruvrandnorm<-normalisedAll[[which(normmeth.fit=="ruvrand")-1]]
+  lfeaturedata<-list(unadj=imp$featuredata,ruv=ruvrandnorm$featuredata,
+                     ruvuv=ruvrandnorm$uvdata)
+  CompareRlaPlots(lfeaturedata,
+                  groupdata=imp$sampledata[,params$gfactor],
+                  normmeth=c("Unadjusted:", "RUVrand normalized:", 
+                             "RUVrand: removed uv:"),
+                  yrange=c(-3,3))
+  
+} else
+  print("This plot is not available for the methods you have entered.")
+
+```
+
+
+### Clustering accuracy of the known samples
+
+```{r dendclust, eval = TRUE,fig.align='center', fig.width = 5,fig.height = 5, warning= FALSE}
+
+
+
+if (length(which(normmeth.fit=="ruv2"))!=0){
+  normalisedDclust<-normalisedD
+  normalisedDclust[[which(normmeth.fit=="ruv2")-1]]<-NULL
+  normmethclust<-params$normmeth
+  normmethclust[[which(normmeth.fit=="ruv2")-1]]<-NULL
+} else {                                                                      #GO
+  normalisedDclust <- normalisedD
+  normmethclust <- params$normmeth
+}
+
+for (ii in 1:(Nmethods-length(which(normmeth.fit=="ruv2")))){
+  hca<-Dendrogram(featuredata=normalisedDclust[[ii]],
+             groupdata=imp$sampledata[,params$gfactor],
+             main=normmethclust[[ii]]
+  )}
+
+```
+
+
+## Classification 
+
+### Explore the normalized data and the removed component of unwanted variation 
+
+Use the RLA and PCA plots above.
+
+### Classification accuracy of known samples
+```{r svm, eval = TRUE,fig.align='center', fig.width = 5, warning= FALSE}
+
+for (ii in 1:(Nmethods-length(which(normmeth.fit=="ruv2")))){
+  
+svm<-SvmFit(featuredata=normalisedDclust[[ii]], 
+            groupdata=imp$sampledata[,params$gfactor],
+            crossvalid=TRUE,
+            k=5,
+            rocplot = TRUE,
+            main=normmethclust[[ii]])
+}
+```
+
+
+## Correlation analysis 
+
+### Explore the normalized data and the removed component of unwanted variation 
+
+Use the RLA and PCA plots above.
+
+### Explore the distribution of correlation coefficients and the p-values 
+
+```{r corr, eval = TRUE, fig.align='center', fig.width=5, fig.height=5, results='hold'}
+lcor<-list()
+lcorp<-list()
+lcorcoef<-list()
+lcor[[1]]<-Corr(imp$featuredata)
+lcorcoef[[1]]<-lcor[[1]]$results[,3]
+lcorp[[1]]<-lcor[[1]]$results[,4]
+
+
+for (ii in 2:(Nmethods-length(which(normmeth.fit=="ruv2")))){
+  lcor[[ii]]<-Corr(normalisedDclust[[ii-1]])
+  lcorcoef[[ii]]<-lcor[[ii]]$results[,3]
+  lcorp[[ii]]<-lcor[[ii]]$results[,4]
+  
+}
+
+ComparePvalHist(lcorcoef,normmeth = c("unadjusted", unlist(normmethclust)),
+                xlim=c(-1,1), xlab="Correlation coefficients") 
+
+```
+
+```{r corrp, eval = TRUE, fig.align='center', fig.width=5, fig.height=5, results='hold'}
+
+ComparePvalHist(lcorp,normmeth = c("unadjusted", unlist(normmethclust)),
+                xlim=c(0,1), xlab="Correlation p-values") 
+
+
+```
+
+
+##References
+

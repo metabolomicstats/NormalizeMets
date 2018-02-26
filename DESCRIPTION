@@ -1,0 +1,25 @@
+Package: NormalizeMets
+Type: Package
+Title: Analysis of Metabolomics Data
+Version: 0.24
+Date: 2018-01-11
+Author: Alysha M De Livera, Gavriel Olshansky
+Maintainer: Alysha M De Livera <alyshad@unimelb.edu.au>
+Description: Metabolomics data are inevitably subject to a component of unwanted
+    variation, due to factors such as batch effects, matrix effects, and confounding
+    biological variation. This package is a collection of functions designed to 
+    implement, assess, and choose a suitable normalization method 
+    for a given metabolomics study (De Livera et al (2015) <doi:10.1021/ac502439y>). 
+License: GPL (>= 2)
+LazyLoad: yes
+lazydata: true
+VignetteBuilder: knitr
+Depends: R (>= 3.4.0)
+Imports:impute, crmn, limma, plotly,
+         e1071, AUC, htmlwidgets, 
+        ggplot2, GGally, grid, rmarkdown, knitr
+RoxygenNote: 6.0.1
+NeedsCompilation: no
+Packaged: 2017-10-22 10:49:36 UTC; alyshad
+Repository: CRAN
+Date/Publication: 2017-10-22 21:28:55 UTC

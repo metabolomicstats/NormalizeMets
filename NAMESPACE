@@ -1,0 +1,26 @@
+  import(plotly, GGally, grid, e1071, limma)
+  importFrom(grDevices, dev.off, jpeg, pdf, png, rgb, tiff, col2rgb)
+  importFrom(graphics, abline, axis, barplot, boxplot, hist,
+             image, legend, lines, mtext, pairs, par, plot,
+             plot.new, points, polygon, rect, text, title)
+  importFrom(stats, as.dendrogram, density, dist, hclust,
+             kmeans, loess, median, model.matrix, na.omit,
+             optim, order.dendrogram, p.adjust, pchisq, pf,
+             prcomp, predict, pt, qt, reorder, residuals,
+             runif, sd, setNames, var, aggregate, cor, resid, 
+             cutree, rect.hclust, pnorm)
+  importFrom(utils, head, write.csv, read.csv, setTxtProgressBar, txtProgressBar, data)
+  importFrom(impute, impute.knn)
+  importFrom(crmn, normalize)
+  importFrom(AUC, roc, auc)  
+  importFrom(htmlwidgets, saveWidget)
+  importFrom(ggplot2, aes)
+export(NormScaling, NormQcmets,NormCombined, NormQcsamples, LogTransform,PcaPlots,
+MissingValues, VennPlot,VolcanoPlot, SvmFit,
+Dendrogram,RlaPlots,HeatMap,LinearModelFit,ContrastMatrix,
+dataview, Corr, CompareRlaPlots, CompareVolcanoPlots, ComparePvalHist,
+ComparePcaPlots, multiplot, GenerateReport)
+
+S3method(print,alldata)
+S3method(print,results)
+
