@@ -8,8 +8,9 @@ RlaPlots(featuredata, groupdata, minoutlier = 0.5, type = c("ag", "wg"),
   saveplot = FALSE, plotname = "RLAPlot", savetype = c("png", "bmp",
   "jpeg", "tiff", "pdf"), interactiveplot = TRUE, interactiveonly = TRUE,
   saveinteractiveplot = FALSE, interactivesavename = "interactiveRlaPlot",
-  cols = NULL, cex.axis = 0.7, las = 2, ylim = c(-2, 2), oma = c(3, 3,
-  3, 5) + 0.1, xlabel = "Samples", showlegend = TRUE, ...)
+  cols = NULL, cex.axis = 0.7, las = 2, keeporder = FALSE,
+  ylim = NULL, oma = c(3, 3, 3, 5) + 0.1, xlabel = "Samples",
+  showlegend = TRUE, ...)
 }
 \arguments{
 \item{featuredata}{featuredata A data frame in the featuredata format. 
@@ -48,6 +49,8 @@ choice of \code{"png","bmp","jpeg","tiff","pdf"} type files.}
 
 \item{las}{A numeric in 0, 1, 2, 3 denoting the style of axis labels.  See
 \code{\link[graphics]{par}}.}
+
+\item{keeporder}{A logical indicator whether to keep the original sample order or group them by groupdata.}
 
 \item{ylim}{A vector containing \emph{y}-axis limits.}
 
