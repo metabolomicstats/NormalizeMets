@@ -26,6 +26,7 @@
 #' \emph{y}-labels relative to the current setting of cex.
 #' @param las A numeric in 0, 1, 2, 3 denoting the style of axis labels.  See
 #' \code{\link[graphics]{par}}.
+#' @param keeporder A logical indicator whether to keep the original sample order or group them by groupdata.
 #' @param ylim A vector containing \emph{y}-axis limits.
 #' @param oma A vector giving the size of the outer margins.
 #' @param xlabel Label for the x-axis
@@ -53,14 +54,14 @@
 #'     ylim = c(-2, 2), cols = c("green","purple"),cex.axis = 0.8)
 #'     
 #' @export RlaPlots
-RlaPlots <- function(featuredata, groupdata, minoutlier = 0.5, type=c("ag", "wg"), saveplot=FALSE, 
-                     plotname = "RLAPlot", savetype= c("png","bmp","jpeg", "tiff","pdf"),
-                     interactiveplot=TRUE, interactiveonly = TRUE,
-                     saveinteractiveplot = FALSE,
-                     interactivesavename = "interactiveRlaPlot",
-                     cols=NULL,cex.axis=0.7, las=2, ylim= NULL, oma=c(3, 3, 3, 5) + 0.1, 
-                     xlabel="Samples", showlegend = TRUE, ...)
+RlaPlots <- function(featuredata, groupdata, minoutlier = 0.5, type=c("ag", "wg"), 
+                     saveplot=FALSE, plotname = "RLAPlot", savetype= c("png","bmp","jpeg", "tiff","pdf"),
+                     interactiveplot=TRUE, interactiveonly = TRUE, saveinteractiveplot = FALSE,
+                     interactivesavename = "interactiveRlaPlot", cols=NULL, cex.axis=0.7, las=2, 
+                     keeporder = FALSE, ylim=NULL, oma=c(3, 3, 3, 5) + 0.1, 
+                     xlabel="Samples", showlegend = TRUE,...)
 {
+  
   
 
   type <- match.arg(type)
@@ -78,7 +79,7 @@ RlaPlots <- function(featuredata, groupdata, minoutlier = 0.5, type=c("ag", "wg"
   	interactiveonly <- FALSE
   }
 
-  
+ 
   # Get the median and standardise the data matrix, reordering to cluster by group
   # also re-order group data to match new data matrix (out_data)
   
@@ -94,14 +95,14 @@ RlaPlots <- function(featuredata, groupdata, minoutlier = 0.5, type=c("ag", "wg"
     for (grp in unique.groups) {
       submat <- featuredata[which(groupdata[, 1] == grp), ]
       subgrp <- groupdata[which(groupdata[, 1] == grp), 1]
-      med_vals <- apply(submat, 2, median)
+      med_vals <- apply(submat, 2, function(x) median(x,na.rm = TRUE))
       swept_mat <- sweep(submat, 2, med_vals, "-")
       out_group <- c(out_group, subgrp)
       out_data <- rbind(out_data, swept_mat)       #bind and order samples by groups
     }
     # Across groups (i.e. type == "ag")
   } else  {
-    med_vals <- apply(featuredata, 2, median)
+    med_vals <- apply(featuredata, 2, function(x) median(x,na.rm = TRUE))
     unordered_data <- sweep(featuredata, 2, med_vals, "-")
     for (grp in unique.groups){
       subdata <- unordered_data[which(groupdata[, 1] == grp), ]
@@ -116,7 +117,13 @@ RlaPlots <- function(featuredata, groupdata, minoutlier = 0.5, type=c("ag", "wg"
   
   
   # get groups and dedicate group colours
-  groups <- factor(out_group[, 1], levels = unique(out_group[, 1]))
+  if (!keeporder){
+    groups <- factor(out_group[, 1], levels = unique(out_group[, 1]))
+  } else {
+    out_data <- unordered_data
+    out_group[,1] <- groups
+  }
+  
   unique.groups <- levels(groups)
   if (is.null(cols)) 
     cols <- ColList(length(unique.groups))
@@ -143,7 +150,7 @@ RlaPlots <- function(featuredata, groupdata, minoutlier = 0.5, type=c("ag", "wg"
     }
   
     #Find outlying samples and prepare to plot their names..
-    med_vals <- apply(out_data, 1, median)
+    med_vals <- apply(out_data, 1, function(x) median(x,na.rm = TRUE))
     sample_n <- vector(,length(med_vals))
     for (i in 1:length(med_vals)){
       temp.i <- i/10

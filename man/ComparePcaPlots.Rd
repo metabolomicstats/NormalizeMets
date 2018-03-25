@@ -7,7 +7,7 @@
 ComparePcaPlots(lfeaturedata, lgroupdata, saveplot = FALSE, plotname = "",
   savetype = c("png", "bmp", "jpeg", "tiff", "pdf"), y.axis = 1,
   x.axis = 2, center = TRUE, scale = TRUE, lmain = NULL, n = 3,
-  cols = NULL, cex_val = 0.7, ...)
+  showlegend = TRUE, usercols = NULL, cex_val = 0.7, ...)
 }
 \arguments{
 \item{lfeaturedata}{A list of data frames in the featuredata format. 
@@ -38,9 +38,15 @@ have unit variance before the analysis takes place.}
 
 \item{lmain}{A list of plot titles}
 
-\item{n}{The number of principal components to be plotted. The default value is set to 3.}
+\item{n}{The number of principal components to be plotted. The default value 
+is set to 3.}
 
-\item{cols}{A character string with colours to be used.}
+\item{showlegend}{A logical indication whether to print a legend for the plot.}
+
+\item{usercols}{A character string with colours to be used or TRUE for ColList
+to be used (ColList is the defualt set of colours used in other plots in this 
+package). A value other then \code{NULL} will automatically set \code{showlegend} to 
+\code{FALSE}.}
 
 \item{cex_val}{A numeric indicating the size of some text elements.}
 

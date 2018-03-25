@@ -14,7 +14,7 @@
   importFrom(crmn, normalize)
   importFrom(AUC, roc, auc)  
   importFrom(htmlwidgets, saveWidget)
-  importFrom(ggplot2, aes)
+  importFrom(ggplot2, aes, ggplot, ggplot_build, scale_color_manual, scale_fill_manual)
 export(NormScaling, NormQcmets,NormCombined, NormQcsamples, LogTransform,PcaPlots,
 MissingValues, VennPlot,VolcanoPlot, SvmFit,
 Dendrogram,RlaPlots,HeatMap,LinearModelFit,ContrastMatrix,
