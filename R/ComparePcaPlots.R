@@ -326,6 +326,8 @@ ComparePcaPlots <- function(lfeaturedata, lgroupdata, saveplot=FALSE,
       } else {
         pushViewport(viewport(layout = grid.layout(2,6)))
       }
+      if (showlegend) 
+        print(my_legend)
       print(pairgg[[1]], vp = viewport(layout.pos.row = 1, layout.pos.col = c(1:3)))
       print(pairgg[[2]], vp = viewport(layout.pos.row = 1, layout.pos.col = second.pos))
       print(pairgg[[3]], vp = viewport(layout.pos.row = 2, layout.pos.col = c(1:3)))
