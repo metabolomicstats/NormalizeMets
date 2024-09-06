@@ -17,8 +17,8 @@
 #
 #'@export dataview
 dataview <- function(data){
-  if (class(data) %in% c("list")) 
-    stop("Input data must be a vector, a matrix, or a dataframe")
+  if (any(class(data) == "list"))
+      stop("Input data must be a vector, a matrix, or a dataframe")
   data <- as.data.frame(data)
   hdata <- data
   dsize <- dim(hdata)

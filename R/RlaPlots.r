@@ -62,7 +62,6 @@ RlaPlots <- function(featuredata, groupdata, minoutlier = 0.5, type=c("ag", "wg"
                      xlabel="Samples", showlegend = TRUE,...)
 {
   
-  
 
   type <- match.arg(type)
   savetype <- match.arg(savetype)
@@ -79,7 +78,7 @@ RlaPlots <- function(featuredata, groupdata, minoutlier = 0.5, type=c("ag", "wg"
   	interactiveonly <- FALSE
   }
 
- 
+  
   # Get the median and standardise the data matrix, reordering to cluster by group
   # also re-order group data to match new data matrix (out_data)
   

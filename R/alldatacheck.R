@@ -22,7 +22,7 @@ alldatacheck<-function(featuredata,
   }
   
   #Check featuredata    
-  if (!class(featuredata) %in% c("data.frame", "matrix")) 
+  if(!(any(class(featuredata) == "data.frame") | any(class(featuredata) == "matrix")))
     stop("featuredata must be a matrix or a dataframe")
   if (is.null(rownames(featuredata)))
     stop("featuredata must have row names") 
@@ -35,7 +35,7 @@ alldatacheck<-function(featuredata,
   
   #Check sampledata
   if (!is.null(sampledata)){
-    if (class(sampledata) != c("data.frame")) 
+    if(!any(class(sampledata) == c("data.frame"))) 
       stop("sampledata must be a dataframe")
     if (is.null(rownames(sampledata)))
       stop("sampledata must have row names") 
@@ -44,7 +44,7 @@ alldatacheck<-function(featuredata,
   }
   
   if (!is.null(metabolitedata)){
-    if (class(metabolitedata) != c("data.frame")) 
+    if (!any(class(metabolitedata) == c("data.frame"))) 
       stop("metabolitedata must be a dataframe")
     if (is.null(rownames(metabolitedata)))
       stop("sampledata must have row names") 
